@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script src="lrlr-polyfill-styles-in-shadows-as-function.js"></script>
+    <div id="host">
+      <template shadowrootmode="open">
+        <style id="style_tag">
+          .test-blue {
+            color: blue;
+          }
+        </style>
+        <span id="test-blue" class="test-blue">Shadow Blue text</span>
+      </template>
+    </div>
+    <div id="another-host">
+      <template shadowrootmode="open">
+        <link rel="stylesheet" href="#style_tag" />
+        <span id="test-blue" class="test-blue">Shadow Blue text</span>
+      </template>
+    </div>
+    <script>
+      lrlrPolyfillStylesInShadows();
+    </script>
+  </body>
+</html>

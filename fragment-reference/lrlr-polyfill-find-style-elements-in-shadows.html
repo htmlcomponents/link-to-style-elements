@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>LRLR Polyfill - Finding Style Elements in Shadow DOM</title>
+    <meta name="author" title="Author Name" content="Author Name" />
+    <script src="/resources/testharness.js"></script>
+    <script src="/resources/testharnessreport.js"></script>
+  </head>
+  <body>
+    <div id="log"></div>
+
+    <div id="test-container">
+      <!-- Element with declarative Shadow DOM that has style elements -->
+      <div id="nested-host">
+        <template shadowrootmode="open">
+          <!-- Style element in outer shadow DOM -->
+          <style id="style_tag">
+            .test-blue {
+              color: blue;
+            }
+            .test-bold {
+              font-weight: bold;
+            }
+            .test-size {
+              font-size: 20px;
+            }
+          </style>
+          <div class="test-element">
+            <span id="test-blue" class="test-blue">Shadow Blue text</span>
+            <span id="test-bold" class="test-bold">Bold text</span>
+            <span id="test-size" class="test-size">20px text</span>
+            <div id="host">
+              <template shadowrootmode="open">
+                <link rel="stylesheet" href="#style_tag" />
+                <div class="nested-test-element">
+                  <span id="test-blue" class="test-blue"
+                    >Nested Shadow Blue text</span
+                  >
+                  <span id="test-bold" class="test-bold">Bold text</span>
+                  <span id="test-size" class="test-size">20px text</span>
+                  <div id="host">
+                    <template shadowrootmode="open">
+                      <link rel="stylesheet" href="#style_tag" />
+                      <div class="nested-test-element">
+                        <span id="test-blue" class="test-blue"
+                          >Child of Nested Shadow Blue text</span
+                        >
+                        <span id="test-bold" class="test-bold">Bold text</span>
+                        <span id="test-size" class="test-size">20px text</span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+        <div>Light DOM content</div>
+      </div>
+    </div>
+
+    <!-- Load the polyfill that finds style elements in shadows -->
+    <script src="lrlr-polyfill-find-style-elements-in-shadows.js"></script>
+
+    <script>
+      // Give the polyfill a moment to execute
+      setup({ explicit_done: true });
+
+      window.addEventListener("load", () => {
+        // Delay a bit to ensure the polyfill has time to work
+        setTimeout(() => {
+          runTests();
+          done();
+        }, 100);
+      });
+
+      function runTests() {
+        // Get the outer host element (level 1)
+        const outerHost = document.getElementById("nested-host");
+        // Get the inner host element (level 2 - inside the outer shadow)
+        const innerHost = outerHost.shadowRoot.getElementById("host");
+        // Get the innermost host element (level 3 - inside the inner shadow)
+        const innermostHost = innerHost.shadowRoot.getElementById("host");
+
+        test(() => {
+          assert_true(
+            !!outerHost.shadowRoot,
+            "Outer (level 1) shadow root should exist"
+          );
+          assert_true(
+            !!innerHost.shadowRoot,
+            "Inner (level 2) shadow root should exist"
+          );
+          assert_true(
+            !!innermostHost.shadowRoot,
+            "Innermost (level 3) shadow root should exist"
+          );
+        }, "Multiple levels of nested Declarative Shadow DOM are supported");
+
+        test(() => {
+          // Check if the style tag exists in the first shadow DOM
+          const styleElement = outerHost.shadowRoot.querySelector("#style_tag");
+          assert_true(
+            !!styleElement,
+            "Style element should exist in outer (level 1) shadow DOM"
+          );
+        }, "Style element exists in shadow DOM");
+
+        test(() => {
+          // Check if link elements in inner and innermost shadow DOMs have been processed
+          const innerLinkElement = innerHost.shadowRoot.querySelector("link");
+          assert_true(
+            !!innerLinkElement,
+            "Link element should exist in inner (level 2) shadow DOM"
+          );
+
+          // Check if the polyfill has properly replaced the href with a data URI
+          const innerHref = innerLinkElement.getAttribute("href");
+          assert_true(
+            innerHref.startsWith("data:text/css;base64,"),
+            "Link href in inner (level 2) shadow DOM should be replaced with a data URI"
+          );
+
+          const innermostLinkElement =
+            innermostHost.shadowRoot.querySelector("link");
+          assert_true(
+            !!innermostLinkElement,
+            "Link element should exist in innermost (level 3) shadow DOM"
+          );
+
+          // Check if the polyfill has properly replaced the href with a data URI
+          const innermostHref = innermostLinkElement.getAttribute("href");
+          assert_true(
+            innermostHref.startsWith("data:text/css;base64,"),
+            "Link href in innermost (level 3) shadow DOM should be replaced with a data URI"
+          );
+        }, "Polyfill finds style elements in shadow DOM and processes link elements");
+
+        test(() => {
+          const innerBlueElement =
+            innerHost.shadowRoot.querySelector("#test-blue");
+          const innerComputedStyle = getComputedStyle(innerBlueElement);
+
+          assert_equals(
+            getCanonicalColor(innerComputedStyle.color),
+            getCanonicalColor("blue"),
+            "Text in inner (level 2) shadow DOM should be blue"
+          );
+
+          const innermostBlueElement =
+            innermostHost.shadowRoot.querySelector("#test-blue");
+          const innermostComputedStyle = getComputedStyle(innermostBlueElement);
+
+          assert_equals(
+            getCanonicalColor(innermostComputedStyle.color),
+            getCanonicalColor("blue"),
+            "Text in innermost (level 3) shadow DOM should be blue"
+          );
+        }, "Blue style from shadow DOM is applied to nested shadow DOM elements");
+
+        test(() => {
+          const innerBoldElement =
+            innerHost.shadowRoot.querySelector("#test-bold");
+          const innerComputedStyle = getComputedStyle(innerBoldElement);
+
+          assert_true(
+            innerComputedStyle.fontWeight === "bold" ||
+              innerComputedStyle.fontWeight === "700",
+            "Text in inner (level 2) shadow DOM should be bold"
+          );
+
+          const innermostBoldElement =
+            innermostHost.shadowRoot.querySelector("#test-bold");
+          const innermostComputedStyle = getComputedStyle(innermostBoldElement);
+
+          assert_true(
+            innermostComputedStyle.fontWeight === "bold" ||
+              innermostComputedStyle.fontWeight === "700",
+            "Text in innermost (level 3) shadow DOM should be bold"
+          );
+        }, "Bold style from shadow DOM is applied to nested shadow DOM elements");
+
+        test(() => {
+          const innerSizeElement =
+            innerHost.shadowRoot.querySelector("#test-size");
+          const innerComputedStyle = getComputedStyle(innerSizeElement);
+
+          assert_equals(
+            innerComputedStyle.fontSize,
+            "20px",
+            "Text in inner (level 2) shadow DOM should be 20px"
+          );
+
+          const innermostSizeElement =
+            innermostHost.shadowRoot.querySelector("#test-size");
+          const innermostComputedStyle = getComputedStyle(innermostSizeElement);
+
+          assert_equals(
+            innermostComputedStyle.fontSize,
+            "20px",
+            "Text in innermost (level 3) shadow DOM should be 20px"
+          );
+        }, "Font size style from shadow DOM is applied to nested shadow DOM elements");
+      }
+
+      // Helper function to normalize color values for comparison
+      function getCanonicalColor(color) {
+        // Create a temporary element to compute the canonical color value
+        const tempElement = document.createElement("div");
+        tempElement.style.color = color;
+        document.body.appendChild(tempElement);
+        const canonicalColor = getComputedStyle(tempElement).color;
+        document.body.removeChild(tempElement);
+        return canonicalColor;
+      }
+    </script>
+  </body>
+</html>

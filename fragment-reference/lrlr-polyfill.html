@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>LRLR Polyfill - Link Fragment Reference for Shadow DOM</title>
+    <meta name="author" title="Author Name" content="Author Name" />
+    <script src="/resources/testharness.js"></script>
+    <script src="/resources/testharnessreport.js"></script>
+    <style id="style_tag">
+      .test-blue {
+        color: blue;
+      }
+      .test-bold {
+        font-weight: bold;
+      }
+      .test-size {
+        font-size: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="log"></div>
+
+    <div id="test-container">
+      <!-- Element with declarative Shadow DOM that references light DOM styles -->
+      <div id="host">
+        <template shadowrootmode="open">
+          <link rel="stylesheet" href="#style_tag" />
+          <div class="test-element">
+            <span id="test-blue" class="test-blue">Blue text</span>
+            <span id="test-bold" class="test-bold">Bold text</span>
+            <span id="test-size" class="test-size">20px text</span>
+          </div>
+        </template>
+        <div>Light DOM content</div>
+      </div>
+    </div>
+
+    <!-- Load the polyfill -->
+    <script src="lrlr-polyfill.js"></script>
+
+    <script>
+      // Give the polyfill a moment to execute
+      setup({ explicit_done: true });
+
+      window.addEventListener("load", () => {
+        // Delay a bit to ensure the polyfill has time to work
+        setTimeout(() => {
+          runTests();
+          done();
+        }, 100);
+      });
+
+      function runTests() {
+        const host = document.getElementById("host");
+
+        test(() => {
+          assert_true(!!host.shadowRoot, "Shadow root should exist");
+        }, "Declarative Shadow DOM is supported");
+
+        test(() => {
+          const linkElement = host.shadowRoot.querySelector("link");
+          assert_true(!!linkElement, "Link element should exist in shadow DOM");
+
+          // Check if the polyfill has properly replaced the href with a data URI
+          const href = linkElement.getAttribute("href");
+          assert_true(
+            href.startsWith("data:text/css;base64,"),
+            "Link href should be replaced with a data URI containing the CSS"
+          );
+        }, "Polyfill processes link element in Shadow DOM");
+
+        test(() => {
+          const blueElement = host.shadowRoot.querySelector("#test-blue");
+          const computedStyle = getComputedStyle(blueElement);
+
+          assert_equals(
+            getCanonicalColor(computedStyle.color),
+            getCanonicalColor("blue"),
+            "Text should be blue"
+          );
+        }, "Blue style is applied from light DOM to shadow DOM");
+
+        test(() => {
+          const boldElement = host.shadowRoot.querySelector("#test-bold");
+          const computedStyle = getComputedStyle(boldElement);
+
+          assert_true(
+            computedStyle.fontWeight === "bold" ||
+              computedStyle.fontWeight === "700",
+            "Text should be bold"
+          );
+        }, "Bold style is applied from light DOM to shadow DOM");
+
+        test(() => {
+          const sizeElement = host.shadowRoot.querySelector("#test-size");
+          const computedStyle = getComputedStyle(sizeElement);
+
+          assert_equals(computedStyle.fontSize, "20px", "Text should be 20px");
+        }, "Font size style is applied from light DOM to shadow DOM");
+      }
+
+      // Helper function to normalize color values for comparison
+      function getCanonicalColor(color) {
+        // Create a temporary element to compute the canonical color value
+        const tempElement = document.createElement("div");
+        tempElement.style.color = color;
+        document.body.appendChild(tempElement);
+        const canonicalColor = getComputedStyle(tempElement).color;
+        document.body.removeChild(tempElement);
+        return canonicalColor;
+      }
+    </script>
+  </body>
+</html>
