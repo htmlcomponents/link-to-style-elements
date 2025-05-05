@@ -36,7 +36,7 @@ Considering the WHATNOT [discussion in #11233](https://github.com/whatwg/html/is
 
 ![lrlr-polyfil-link-to-link wpt](./images/lrlr-polyfill-link-to-link.png)
 
-The benefit of also supporting a link reference to a link element in addition to a style element is that the styles can be loaded from a network resource in addition to a style element, while eliminating the FOUC caused by unspecified and unreliable cache behavior and the duplicated instances that result from multiple link elements all pointing to the same network resource.
+The benefit of also supporting a link reference to a link element in addition to a style element is that the styles can be loaded from a network resource in addition to a style element, while eliminating the FOUC caused by [unspecified](https://github.com/whatwg/html/issues/11244) and [unreliable](https://issues.chromium.org/issues/383593251) cache behavior and the duplicated instances that result from multiple link elements all pointing to the same network resource.
 
 For example:
 
