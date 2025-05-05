@@ -49,7 +49,7 @@ styles.css:
 
 lrlr-polyfill-link-to-link.html:
 ```html
-</head>
+<head>
    <link rel="stylesheet" href="styles.css" id="style_tag" />
 </head>
 <body>
